@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GitHub Pages 图床</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+  "Microsoft YaHei",sans-serif;background:linear-gradient(135deg,#f7f3ff,#eef7ff 45%,#fff);
+  color:#252333
+}
+.container{max-width:1100px;margin:0 auto;padding:36px 20px 60px}
+h1{margin:0 0 8px;font-size:30px}
+.sub{color:#777;margin:0 0 26px}
+.card{
+  background:rgba(255,255,255,.88);border:1px solid #eee;border-radius:18px;
+  box-shadow:0 10px 35px rgba(70,45,120,.08);padding:22px;margin-bottom:20px
+}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+label{display:block;font-size:14px;font-weight:650;margin-bottom:7px}
+input{
+  width:100%;padding:11px 12px;border:1px solid #ddd;border-radius:10px;
+  outline:none;font-size:14px;background:#fff
+}
+input:focus{border-color:#9271d8;box-shadow:0 0 0 3px rgba(146,113,216,.12)}
+.token-row{display:flex;gap:8px}
+.token-row input{flex:1}
+button{
+  border:0;border-radius:10px;padding:10px 15px;font-weight:650;cursor:pointer;
+  background:#7c5acb;color:white
+}
+button.secondary{background:#f1eef8;color:#5d4b88}
+button.danger{background:#fff0f0;color:#c33;border:1px solid #ffd3d3}
+button:disabled{opacity:.55;cursor:not-allowed}
+.help{font-size:12px;color:#888;margin-top:6px;line-height:1.5}
+.drop{
+  border:2px dashed #cfc5e7;border-radius:15px;padding:28px;text-align:center;
+  cursor:pointer;background:#fbf9ff;transition:.2s
+}
+.drop.drag{background:#f0eaff;border-color:#8b6ad2}
+.drop strong{display:block;font-size:16px;margin-bottom:6px}
+#fileInput{display:none}
+.toolbar{display:flex;gap:8px;justify-content:flex-end;margin:15px 0}
+.status{font-size:14px;line-height:1.6}
+.status.ok{color:#218838}.status.err{color:#c62828}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.item{
+  overflow:hidden;border-radius:15px;background:#fff;border:1px solid #eee;
+  box-shadow:0 5px 18px rgba(0,0,0,.06)
+}
+.preview{height:180px;background:#f5f5f5;display:flex;align-items:center;justify-content:center}
+.preview img{width:100%;height:100%;object-fit:cover}
+.audio{padding:25px 14px}.audio audio{width:100%}
+.info{padding:13px}
+.name{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.url{
+  margin-top:8px;font-size:11px;color:#777;background:#f7f7f7;border-radius:8px;
+  padding:8px;word-break:break-all;max-height:58px;overflow:auto
+}
+.actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px}
+.actions button{font-size:12px;padding:8px 4px}
+.empty{padding:35px;text-align:center;color:#999}
+.small{font-size:12px;color:#888}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.container{padding:22px 13px}.actions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>GitHub Pages 图床</h1>
+  <p class="sub">上传图片 / 音频到 GitHub 仓库，并自动生成 github.io 外链。</p>
+
+  <section class="card">
+    <div class="grid">
+      <div>
+        <label>GitHub 用户名</label>
+        <input id="username" placeholder="例如 yan123">
+      </div>
+      <div>
+        <label>仓库名</label>
+        <input id="repo" placeholder="例如 yan">
+      </div>
+      <div>
+        <label>分支</label>
+        <input id="branch" value="main">
+      </div>
+      <div>
+        <label>文件夹（可选）</label>
+        <input id="folder" placeholder="例如 images">
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <label>GitHub Personal Access Token</label>
+      <div class="token-row">
+        <input id="token" type="password" placeholder="ghp_... 或 github_pat_...">
+        <button class="secondary" id="toggleToken">显示</button>
+        <button id="saveToken">保存 Token</button>
+      </div>
+      <div class="help">Token 仅保存在当前浏览器 localStorage，并直接从浏览器调用 GitHub API。不要把这个 HTML 发布给别人后同时留下你的 Token。</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div id="drop" class="drop">
+      <strong>点击选择文件，或拖拽文件到这里</strong>
+      <span class="small">支持 jpg / png / gif / webp / svg / bmp / ico / mp3 / wav / m4a / ogg / flac / aac</span>
+      <input id="fileInput" type="file" multiple accept="image/*,audio/*,.svg,.ico,.bmp,.m4a,.flac,.aac">
+    </div>
+    <div class="toolbar">
+      <button class="secondary" id="refresh">刷新图库</button>
+      <button id="upload" disabled>上传选中文件</button>
+    </div>
+    <div id="status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin-top:0">图库</h2>
+    <div id="gallery" class="gallery"><div class="empty">点击“刷新图库”加载仓库文件</div></div>
+  </section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = "github_image_host_config_v1";
+const allowed = /\.(jpe?g|png|gif|webp|svg|bmp|ico|mp3|wav|m4a|ogg|flac|aac)$/i;
+let selected = [];
+
+function loadConfig(){
+  try{
+    const c = JSON.parse(localStorage.getItem(KEY)||"{}");
+    ["username","repo","branch","folder"].forEach(k=>{ if(c[k]) $(k).value=c[k] });
+    if(c.token) $("token").value=c.token;
+  }catch{}
+}
+function saveConfig(){
+  const c={username:$("username").value.trim(),repo:$("repo").value.trim(),
+    branch:$("branch").value.trim()||"main",folder:$("folder").value.trim(),token:$("token").value.trim()};
+  localStorage.setItem(KEY,JSON.stringify(c));
+}
+function cfg(){
+  const c={username:$("username").value.trim(),repo:$("repo").value.trim(),
+    branch:$("branch").value.trim()||"main",folder:$("folder").value.trim(),token:$("token").value.trim()};
+  if(!c.username||!c.repo||!c.token) throw Error("请先填写 GitHub 用户名、仓库名和 Token");
+  return c;
+}
+function api(c,path=""){return `https://api.github.com/repos/${encodeURIComponent(c.username)}/${encodeURIComponent(c.repo)}/contents/${path}`}
+
+$("toggleToken").onclick=()=>{
+  const x=$("token"); x.type=x.type==="password"?"text":"password";
+  $("toggleToken").textContent=x.type==="password"?"显示":"隐藏";
+};
+$("saveToken").onclick=()=>{saveConfig(); setStatus("Token 和配置已保存到当前浏览器。","ok")};
+
+function setStatus(t,cl=""){ $("status").textContent=t; $("status").className="status "+cl }
+
+function handleFiles(files){
+  selected=[...files].filter(f=>allowed.test(f.name));
+  if(!selected.length){setStatus("没有发现支持的文件格式。","err");$("upload").disabled=true;return}
+  setStatus(`已选择 ${selected.length} 个文件：${selected.map(x=>x.name).join("、")}`);
+  $("upload").disabled=false;
+}
+$("drop").onclick=()=>$("fileInput").click();
+$("fileInput").onchange=e=>handleFiles(e.target.files);
+["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("drag")}));
+["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("drag")}));
+$("drop").addEventListener("drop",e=>handleFiles(e.dataTransfer.files));
+
+function b64(buf){
+  let s="", bytes=new Uint8Array(buf);
+  const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk)s+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+  return btoa(s);
+}
+function safePath(name){
+  const folder=$("folder").value.trim().replace(/^\/+|\/+$/g,"");
+  return folder?folder+"/"+name:name;
+}
+function rawUrl(c,path){
+  return `https://${c.username}.github.io/${c.repo}/${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+async function uploadOne(file,c){
+  const path=safePath(file.name);
+  const content=b64(await file.arrayBuffer());
+  const r=await fetch(api(c,path),{
+    method:"PUT",
+    headers:{"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},
+    body:JSON.stringify({message:"upload "+file.name,content,branch:c.branch})
+  });
+  const j=await r.json();
+  if(!r.ok) throw Error(j.message||("上传失败 "+r.status));
+  return rawUrl(c,path);
+}
+$("upload").onclick=async()=>{
+  let c; try{c=cfg();saveConfig()}catch(e){setStatus(e.message,"err");return}
+  $("upload").disabled=true;
+  let ok=0;
+  for(const f of selected){
+    try{await uploadOne(f,c);ok++;setStatus(`正在上传… ${ok}/${selected.length}`)}
+    catch(e){setStatus(`${f.name} 上传失败：${e.message}`,"err")}
+  }
+  setStatus(`上传完成：${ok}/${selected.length} 个文件。`,"ok");
+  selected=[];$("fileInput").value="";$("upload").disabled=true;
+  await loadGallery();
+};
+
+function headers(c){return {"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json"}}
+async function getTree(c,path=""){
+  const r=await fetch(api(c,path)+"?ref="+encodeURIComponent(c.branch),{headers:headers(c)});
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw Error(j.message||("读取失败 "+r.status))}
+  return r.json();
+}
+async function loadGallery(){
+  let c;try{c=cfg()}catch(e){setStatus(e.message,"err");return}
+  const gallery=$("gallery");gallery.innerHTML='<div class="empty">加载中…</div>';
+  try{
+    const data=await getTree(c,$("folder").value.trim());
+    const arr=Array.isArray(data)?data:[data];
+    const files=arr.filter(x=>x.type==="file"&&allowed.test(x.name));
+    if(!files.length){gallery.innerHTML='<div class="empty">当前文件夹没有支持的文件</div>';return}
+    gallery.innerHTML="";
+    files.forEach(item=>{
+      const url=rawUrl(c,item.path), isAudio=/\.(mp3|wav|m4a|ogg|flac|aac)$/i.test(item.name);
+      const card=document.createElement("div");card.className="item";
+      const preview=document.createElement("div");preview.className=isAudio?"audio":"preview";
+      if(isAudio){const a=document.createElement("audio");a.controls=true;a.src=url;preview.appendChild(a)}
+      else{const img=document.createElement("img");img.loading="lazy";img.src=url;img.alt=item.name;preview.appendChild(img)}
+      const info=document.createElement("div");info.className="info";
+      const name=document.createElement("div");name.className="name";name.textContent=item.name;
+      const link=document.createElement("div");link.className="url";link.textContent=url;
+      const actions=document.createElement("div");actions.className="actions";
+      const copy=document.createElement("button");copy.textContent="复制";
+      copy.onclick=()=>navigator.clipboard.writeText(url).then(()=>{copy.textContent="已复制";setTimeout(()=>copy.textContent="复制",1200)});
+      const open=document.createElement("button");open.textContent="打开";open.className="secondary";open.onclick=()=>window.open(url,"_blank");
+      const del=document.createElement("button");del.textContent="删除";del.className="danger";
+      del.onclick=()=>deleteFile(item,c,del);
+      actions.append(copy,open,del);info.append(name,link,actions);card.append(preview,info);gallery.appendChild(card);
+    });
+  }catch(e){gallery.innerHTML='<div class="empty">加载失败：'+escapeHtml(e.message)+'</div>'}
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+async function deleteFile(item,c,btn){
+  if(!confirm(`确定删除「${item.name}」吗？`))return;
+  btn.disabled=true;
+  try{
+    const r=await fetch(api(c,item.path),{
+      method:"DELETE",headers:{...headers(c),"Content-Type":"application/json"},
+      body:JSON.stringify({message:"delete "+item.name,sha:item.sha,branch:c.branch})
+    });
+    const j=await r.json();
+    if(!r.ok)throw Error(j.message||("删除失败 "+r.status));
+    await loadGallery();
+  }catch(e){setStatus(e.message,"err");btn.disabled=false}
+}
+$("refresh").onclick=loadGallery;
+loadConfig();
+</script>
+</body>
+</html>
